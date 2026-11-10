@@ -13,8 +13,3 @@ public:
 private:
     double _strike;
 };
-
-class OptionCall{
-    public :
-
-}

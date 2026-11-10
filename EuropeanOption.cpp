@@ -1,4 +1,4 @@
-#include "EuropeanVanillaOption.h"
+#include "EuropeanOption.h"
 #include <stdexcept>
 
 EuropeanVanillaOption::EuropeanVanillaOption(double expiry, double strike)
