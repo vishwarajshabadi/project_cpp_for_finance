@@ -1,24 +1,20 @@
 #pragma once
 #include "Option.h"
-#include <stdexcept>
+
+enum class optionType { call, put };
 
 class EuropeanVanillaOption : public Option {
 public:
-    EuropeanVanillaOption(double expiry, double strike)
-        : Option(expiry), _strike(strike)
-    {
-        if (expiry < 0.0 || strike < 0.0)
-            throw std::invalid_argument("Expiry and strike must be nonnegative");
-    }
+    EuropeanVanillaOption(double expiry, double strike);
 
     virtual optionType GetOptionType() const = 0;   // virtuelle pure
-
-    double getStrike() const { return _strike; }    // ajout : nécessaire pour les payoffs
+    double getStrike() const;
 
 private:
     double _strike;
 };
+
 class OptionCall{
     public :
-    
+
 }
