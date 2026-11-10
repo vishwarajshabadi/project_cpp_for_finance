@@ -1,7 +1,5 @@
 #pragma once
 
-enum class OptionType { Call, Put };
-
 class Option {
 public:
     explicit Option(double expiry);

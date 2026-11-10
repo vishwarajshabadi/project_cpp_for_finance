@@ -24,7 +24,7 @@ BlackScholesPricer::BlackScholesPricer(EuropeanVanillaOption* option,
 }
 
 double BlackScholesPricer::operator()() const {
-    const double K = _option->getStrike();
+    const double K = _option->_strike;   // acces friend
     const double T = _option->getExpiry();
     const double S = _asset_price;
     const double r = _interest_rate;
@@ -40,7 +40,7 @@ double BlackScholesPricer::operator()() const {
 }
 
 double BlackScholesPricer::delta() const {
-    const double K = _option->getStrike();
+    const double K = _option->_strike;   // acces friend
     const double T = _option->getExpiry();
     const double S = _asset_price;
     const double r = _interest_rate;
