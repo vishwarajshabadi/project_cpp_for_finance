@@ -1,5 +1,7 @@
 #include "BlackScholesPricer.h"
 
+#include "EuropeanDigitalOption.h"
+
 #include <cmath>
 #include <stdexcept>
 
@@ -7,6 +9,11 @@
 namespace {
 double norm_cdf(double x) {
     return 0.5 * std::erfc(-x / std::sqrt(2.0));
+}
+
+// Standard normal PDF.
+double norm_pdf(double x) {
+    return std::exp(-0.5 * x * x) / std::sqrt(2.0 * 3.14159265358979323846);
 }
 }  // namespace
 
@@ -17,10 +24,20 @@ BlackScholesPricer::BlackScholesPricer(EuropeanVanillaOption* option,
     : _option(option),
       _asset_price(asset_price),
       _interest_rate(interest_rate),
-      _volatility(volatility) {
+      _volatility(volatility),
+      _digital(false) {
     if (asset_price <= 0 || volatility <= 0) {
         throw std::invalid_argument("asset price and volatility must be positive");
     }
+}
+
+BlackScholesPricer::BlackScholesPricer(EuropeanDigitalOption* option,
+                                       double asset_price,
+                                       double interest_rate,
+                                       double volatility)
+    : BlackScholesPricer(static_cast<EuropeanVanillaOption*>(option),
+                         asset_price, interest_rate, volatility) {
+    _digital = true;
 }
 
 double BlackScholesPricer::operator()() const {
@@ -32,6 +49,14 @@ double BlackScholesPricer::operator()() const {
 
     const double d1 = (std::log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * std::sqrt(T));
     const double d2 = d1 - sigma * std::sqrt(T);
+
+    if (_digital) {
+        // Prix d'une option digitale : e^{-rT} N(d2) (call) / e^{-rT} N(-d2) (put).
+        if (_option->GetOptionType() == optionType::call) {
+            return std::exp(-r * T) * norm_cdf(d2);
+        }
+        return std::exp(-r * T) * norm_cdf(-d2);
+    }
 
     if (_option->GetOptionType() == optionType::call) {
         return S * norm_cdf(d1) - K * std::exp(-r * T) * norm_cdf(d2);
@@ -47,6 +72,15 @@ double BlackScholesPricer::delta() const {
     const double sigma = _volatility;
 
     const double d1 = (std::log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * std::sqrt(T));
+
+    if (_digital) {
+        // Delta d'une option digitale : e^{-rT} phi(d1) / (S sigma sqrt(T)).
+        const double delta_call = std::exp(-r * T) * norm_pdf(d1) / (S * sigma * std::sqrt(T));
+        if (_option->GetOptionType() == optionType::call) {
+            return delta_call;
+        }
+        return -delta_call;
+    }
 
     if (_option->GetOptionType() == optionType::call) {
         return norm_cdf(d1);
