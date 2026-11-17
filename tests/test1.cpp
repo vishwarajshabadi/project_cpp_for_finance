@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>   // ajout : manquait pour exp/sqrt, modifie par nous-memes
 #include "CallOption.h"
 #include "PutOption.h"
 #include "EuropeanDigitalCallOption.h"
