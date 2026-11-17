@@ -1,6 +1,6 @@
 # project_cpp_for_finance
 
-# Participants
+## Participants
 
 - Dan Cohen-Scali
 - Thomas Fornelli
