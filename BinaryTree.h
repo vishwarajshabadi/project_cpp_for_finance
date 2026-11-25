@@ -1,43 +1,55 @@
 #pragma once
-
 #include <vector>
-#include <iostream>
-#include <sstream>
 #include <string>
+#include <iostream>
+#include <iomanip>
 #include <stdexcept>
-#include <algorithm>
 
-// Arbre binaire recombinant utilisé par la méthode CRR.
-// Le niveau n (0 <= n <= N) contient n+1 noeuds, indexés par i (0 <= i <= n).
-// Classe template : toute la définition reste dans le .h.
+// Arbre binaire recombinant utilise par la methode CRR.
+// Le niveau n (0 <= n <= N) contient n+1 noeuds, numerotes de 0 a n.
+// Comme c'est un template, tout le code est ecrit dans le .h.
 template <typename T>
 class BinaryTree {
 private:
     int _depth;                          // N : nombre de pas de temps
-    std::vector<std::vector<T>> _tree;   // _tree[n][i] = valeur au pas n, noeud i
+    std::vector<std::vector<T>> _tree;   // _tree[n][i] : valeur du noeud i au pas n
 
-    // Vérifie que les indices (n, i) existent dans l'arbre
+    // Verifie que le noeud (n, i) existe dans l'arbre
     void checkIndices(int n, int i) const {
-        if (n < 0 || n > _depth || i < 0 || i > n)
-            throw std::out_of_range("BinaryTree : indices (n, i) hors de l'arbre");
+        if (n < 0 || n > _depth) {
+            throw std::out_of_range("BinaryTree : n hors de l'arbre");
+        }
+        if (i < 0 || i > n) {
+            throw std::out_of_range("BinaryTree : i hors du niveau n");
+        }
     }
 
 public:
-    BinaryTree() : _depth(0) { setDepth(0); }
-    explicit BinaryTree(int depth) : _depth(0) { setDepth(depth); }
-
-    // Fixe N et redimensionne l'arbre : N+1 niveaux, le niveau n ayant n+1 noeuds.
-    // resize() alloue les nouveaux vecteurs et libère ceux qui ne servent plus.
-    void setDepth(int depth) {
-        if (depth < 0)
-            throw std::invalid_argument("BinaryTree : la profondeur doit etre >= 0");
-        _depth = depth;
-        _tree.resize(_depth + 1);
-        for (int n = 0; n <= _depth; ++n)
-            _tree[n].resize(n + 1);
+    // Constructeur par defaut : arbre de profondeur 0 (un seul noeud)
+    BinaryTree() {
+        setDepth(0);
     }
 
-    int getDepth() const { return _depth; }
+    // Constructeur avec la profondeur N
+    BinaryTree(int depth) {
+        setDepth(depth);
+    }
+
+    // Fixe N et redimensionne l'arbre : N+1 niveaux, le niveau n ayant n+1 noeuds
+    void setDepth(int depth) {
+        if (depth < 0) {
+            throw std::invalid_argument("BinaryTree : la profondeur doit etre >= 0");
+        }
+        _depth = depth;
+        _tree.resize(_depth + 1);
+        for (int n = 0; n <= _depth; ++n) {
+            _tree[n].resize(n + 1);
+        }
+    }
+
+    int getDepth() const {
+        return _depth;
+    }
 
     void setNode(int n, int i, T value) {
         checkIndices(n, i);
@@ -49,60 +61,47 @@ public:
         return _tree[n][i];
     }
 
-    // Affiche les valeurs de deux façons :
-    // 1) ligne par ligne (un niveau n par ligne)
-    // 2) sous forme d'arbre, avec les branches / et \ .
+    // Affiche l'arbre de deux facons
     void display() const {
-        // 1) Affichage ligne par ligne
+        // 1) Un niveau par ligne
         for (int n = 0; n <= _depth; ++n) {
-            for (int i = 0; i <= n; ++i)
-                std::cout << _tree[n][i] << (i < n ? "\t" : "");
+            for (int i = 0; i <= n; ++i) {
+                std::cout << _tree[n][i];
+                if (i < n) {                 // pas de separateur apres le dernier noeud
+                    std::cout << "\t";
+                }
+            }
             std::cout << "\n";
         }
         std::cout << "\n";
 
-        // 2) Affichage en arbre
-        // Largeur d'une "case" = longueur de la plus longue valeur affichée + 1
-        int w = 4;
-        for (const auto& niveau : _tree)
-            for (const T& v : niveau)
-                w = std::max(w, (int)toString(v).size() + 1);
-        if (w % 2 == 1) ++w;   // largeur paire : les branches tombent pile entre deux noeuds
+        // 2) Sous forme d'arbre
+        // Chaque valeur occupe une case de 8 caracteres.
+        // Le niveau n est decale de (N - n) demi-cases vers la droite pour etre centre.
+        const int largeurCase = 8;
 
-        const int largeurTotale = (2 * _depth + 1) * w + w;
         for (int n = 0; n <= _depth; ++n) {
-            // Ligne des valeurs du niveau n
-            std::string ligne(largeurTotale, ' ');
-            for (int i = 0; i <= n; ++i) {
-                std::string s = toString(_tree[n][i]);
-                int centre = (_depth - n + 2 * i) * w + w / 2;
-                int debut = std::max(0, centre - (int)s.size() / 2);
-                ligne.replace(debut, s.size(), s);
-            }
-            std::cout << rtrim(ligne) << "\n";
+            // Decalage du niveau n
+            int decalage = (_depth - n) * largeurCase / 2;
 
-            // Ligne des branches vers le niveau n+1
+            // Ligne des valeurs
+            std::cout << std::string(decalage, ' ');
+            for (int i = 0; i <= n; ++i) {
+                std::cout << std::left << std::setw(largeurCase) << _tree[n][i];
+            }
+            std::cout << "\n";
+
+            // Ligne des branches vers le niveau suivant
             if (n < _depth) {
-                std::string branches(largeurTotale, ' ');
+                std::string branches(decalage + (n + 1) * largeurCase, ' ');
                 for (int i = 0; i <= n; ++i) {
-                    int centre = (_depth - n + 2 * i) * w + w / 2;
-                    branches[centre - w / 2] = '/';
-                    branches[centre + w / 2] = '\\';
+                    int debutCase = decalage + i * largeurCase;
+                    branches[debutCase + 1] = '/';    // vers le noeud du bas (i)
+                    branches[debutCase + 5] = '\\';   // vers le noeud du haut (i+1)
                 }
-                std::cout << rtrim(branches) << "\n";
+                std::cout << branches << "\n";
             }
         }
-        std::cout << "\n";
-    }
-
-private:
-    static std::string toString(const T& v) {
-        std::ostringstream oss;
-        oss << v;
-        return oss.str();
-    }
-    static std::string rtrim(std::string s) {
-        s.erase(s.find_last_not_of(' ') + 1);
-        return s;
+        std::cout << std::right << "\n";   // remet l'alignement par defaut
     }
 };
