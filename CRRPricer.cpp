@@ -4,10 +4,10 @@
 
 // Constructeur : enregistre les parametres du modele, puis verifie qu'ils sont valides
 CRRPricer::CRRPricer(Option* option, int depth, double asset_price,
-                     double up, double down, double interest_rate)
+    double up, double down, double interest_rate)
     : _option(option), _depth(depth), _asset_price(asset_price),
-      _up(up), _down(down), _interest_rate(interest_rate),
-      _tree(depth), _computed(false)
+    _up(up), _down(down), _interest_rate(interest_rate),
+    _tree(depth), _computed(false)
 {
     if (option == nullptr) {
         throw std::invalid_argument("CRRPricer : option nulle");
@@ -38,6 +38,15 @@ double CRRPricer::stockPrice(int n, int i) const {
     return _asset_price * std::pow(1 + _up, i) * std::pow(1 + _down, n - i);
 }
 
+// Factorielle : n! = 1 x 2 x ... x n, avec 0! = 1
+double CRRPricer::factorielle(int n) const {
+    double resultat = 1.0;
+    for (int k = 2; k <= n; ++k) {
+        resultat = resultat * k;
+    }
+    return resultat;
+}
+
 // Remplit l'arbre des prix de l'option H(n, i), de l'echeance vers la date 0
 void CRRPricer::compute() {
     double q = riskNeutralProbability();
@@ -45,7 +54,8 @@ void CRRPricer::compute() {
     // A l'echeance N : H(N, i) = h(S(N, i))
     for (int i = 0; i <= _depth; ++i) {
         double S = stockPrice(_depth, i);
-        _tree.setNode(_depth, i, _option->payoff(S));
+        double h = _option->payoff(S);
+        _tree.setNode(_depth, i, h);
     }
 
     // Recurrence arriere : H(n, i) = [q H(n+1, i+1) + (1-q) H(n+1, i)] / (1+R)
@@ -70,9 +80,8 @@ double CRRPricer::get(int n, int i) {
 }
 
 // Prix de l'option a la date 0
-// closed_form = false : par l'arbre
-// closed_form = true  : par la formule fermee
 double CRRPricer::operator()(bool closed_form) {
+    // Methode 1 : par l'arbre
     if (!closed_form) {
         if (!_computed) {
             compute();
@@ -80,19 +89,22 @@ double CRRPricer::operator()(bool closed_form) {
         return _tree.getNode(0, 0);
     }
 
-    // Formule fermee :
+    // Methode 2 : formule fermee
     // H(0,0) = 1/(1+R)^N * somme sur i de C(N,i) q^i (1-q)^(N-i) h(S(N,i))
-    double q = riskNeutralProbability();
+    // avec C(N,i) = N! / (i! (N-i)!)
     int N = _depth;
+    if (N > 170) {
+        throw std::invalid_argument("CRRPricer : formule fermee limitee a N <= 170 (N! trop grand)");
+    }
+
+    double q = riskNeutralProbability();
     double somme = 0.0;
-    double coefBinomial = 1.0;   // C(N, 0) = 1
 
     for (int i = 0; i <= N; ++i) {
+        double coefBinomial = factorielle(N) / (factorielle(i) * factorielle(N - i));
         double proba = coefBinomial * std::pow(q, i) * std::pow(1 - q, N - i);
-        somme += proba * _option->payoff(stockPrice(N, i));
-
-        // Passage de C(N, i) a C(N, i+1) : on multiplie par (N - i) / (i + 1)
-        coefBinomial = coefBinomial * (N - i) / (i + 1);
+        double S = stockPrice(N, i);
+        somme = somme + proba * _option->payoff(S);
     }
 
     return somme / std::pow(1 + _interest_rate, N);
